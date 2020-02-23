@@ -204,7 +204,7 @@ runTest <- FALSE
 if(runTest){
 chromdev <- readRDS("./motifDev_bagLeaders.rds")
 
-Zscores <- scale(deviationScores(chromdev)[-1,],center = TRUE,scale = TRUE)
+Zscores <- scale(deviationScores(chromdev),center = TRUE,scale = TRUE)
 
 # Run jackstraw PCA for scaled/centered Z-scores of bag leaders
 JSM <- jackstrawMotifs(mat = Zscores,
