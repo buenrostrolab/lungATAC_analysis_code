@@ -13,16 +13,13 @@ setwd("<data_analysis_folder>")
 SE <- readRDS("./atac.se.rds")
 
 # Load motif deviations object
-devMotif <- readRDS("./devMotif.rds")
+devBagged <- readRDS("./chromVAR/devMotif_bagLeaders.rds")
 
 # Filter cells used in module analysis (remove normal cells)
 cellsToKeep <- readRDS("./lungMetCells.rds")
 
 SE <- SE[,cellsToKeep]
-devMotif <- devMotif[,cellsToKeep]
-
-# Bag motifs based on sequence similarity
-devBagged <- bagDeviations(devMotif,cor = 0.8,organism = "human")
+devBagged <- devBagged[,cellsToKeep]
 
 # Fetch scaled motif Z-scores
 Zscaled <- scale(deviationScores(devBagged),center = TRUE,scale = TRUE)
@@ -35,12 +32,11 @@ JSM <- jackstrawMotifs(mat = Zscaled,
                        nIterations = 1000,num.cores = 4,do.par = TRUE)
 
 # Fetch sig variable motifs
-jackSigmotifs <- getSigMotifs(JSpvals = JSM$jackStrawPCEmpPvals,pcs.use = 1:10,pval.cutoff = 0.05)
+jackSigmotifs <- getSigMotifs(JSpvals = JSM$jackStrawPCEmpPvals,pcs.use = 1:10,pval.cutoff = 0.1)
 
 # Only use jackstraw PC sig motifs, and filtered cells
 Z <- deviationScores(devBagged)[jackSigmotifs,]
 
-saveRDS(Z,"./chromVAR/jackSigMelanomaMotifDev.rds")
 
 # Do module analysis on bagged filtered motifs/cells
 cat("Starting module analyses ..\n")
@@ -80,7 +76,7 @@ gNumDiffPeaks
 # Get union of all sig peaks in sig motifs
 sigPeaksIndicesPerMotif <- lapply(peakTFMotifList,function(l,FDR.cut=FDR) { which(l$FDR < FDR.cut)}) # Won't consider NAs
 
-names(sigPeaksIndicesPerMotif)[1]
+names(sigPeaksIndicesPerMotif)[1] # Check
 
 # Pooling sig peaks
 sigPeaks <- Reduce("union",sigPeaksIndicesPerMotif) # Note here that taking union doesn't automatically sort it numerically (e.g. peak 2 before peak 3; we do this only in the end to save it separately)
@@ -88,6 +84,7 @@ sigPeaks <- Reduce("union",sigPeaksIndicesPerMotif) # Note here that taking unio
 length(sigPeaks)
 sum(is.na(sigPeaks))
 
+# Clustering sig peaks fold-changes
 Zgroups <- .binarizeZMat(Z)
 
 LFC.mat <- Matrix(0,nrow = length(sigPeaks),ncol = nrow(Z))
@@ -142,7 +139,8 @@ names(Kmemberships) <- paste0("Peak ",sigPeaks)
 # Now we can cluster each K group separately
 hlist <- list()
 # Instead of 1-11, we can use a custom order after later inspection
-clusterGroupOrder <- 1:K
+#clusterGroupOrder <- 1:K
+clusterGroupOrder <- c(8,6,5,11,7,10,3,1,9,2,4) # Order from early to late modules (determined after iniital inspection)
 for(i in 1:max(K)){
   k <- clusterGroupOrder[i]
   cat("Clustering peaks from K=",k," ..\n")
@@ -169,13 +167,13 @@ heat <- Heatmap(t(scale(t(p))),name = "log2 FC \naccessibility",
                 col = jdb_palette("brewer_jamaica"),
                 split = Kmemberships.sorted,
                 show_row_names = FALSE,
-                use_raster = TRUE)
+                use_raster = TRUE,gap = unit(1,"mm"))
 
 draw(heat)
 
 
 
-# Build annotation matrix of peaks x K modules
+# Build binary annotation matrix of peaks x K modules
 # This annotation matrix is what is used as input to chromVAR to score single cells for modules
 Kannot <- sparseMatrix(i = sigPeaks, # Indices for the significant peaks returned
                        j = Kmemberships, # K cluster assignments for each of the same peaks
