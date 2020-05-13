@@ -1,3 +1,7 @@
+### Author: Vinay Kartha
+### Contact: <vinay_kartha@g.harvard.edu>
+### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology, Harvard University
+
 library(SummarizedExperiment)
 library(chromVAR)
 library(BuenRTools)
