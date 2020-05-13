@@ -1,8 +1,8 @@
 ### Author: Vinay Kartha
 ### Contact: <vinay_kartha@g.harvard.edu>
-### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology
+### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology, Harvard University
 
-# Source module functions
+# Source module dependency functions
 source("<path_to_git>/R/moduleDiffPeaks.R")
 # Source jackstraw functions
 source("<path_to_git>/R/jackStrawPCA.R.R")
@@ -44,12 +44,12 @@ saveRDS(Z,"./chromVAR/jackSigMelanomaMotifDev.rds")
 
 # Do module analysis on bagged filtered motifs/cells
 cat("Starting module analyses ..\n")
-peakTFMotifList <- ttestPeaksMatParNew(Zscores = Z,
-                                      scSE = SE,
-                                      binarizeMat = FALSE,
-                                      normalizeMat = TRUE,
-                                      ncores = 6,
-                                      byMotifs = TRUE)
+peakTFMotifList <- ttestPeaksMatPar(Zscores = Z,
+                                    scSE = SE,
+                                    binarizeMat = FALSE,
+                                    normalizeMat = TRUE,
+                                    ncores = 6,
+                                    byMotifs = TRUE)
 cat("Finished!\n")
 
 # REVERSE dm sign (making it high - low, instead of default low - high)

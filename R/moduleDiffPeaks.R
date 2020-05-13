@@ -1,14 +1,16 @@
 ### Author: Vinay Kartha
 ### Contact: <vinay_kartha@g.harvard.edu>
-### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology
+### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology, Harvard University
 
 library(dplyr)
 library(doParallel)
 library(foreach)
 library(scales)
 library(genefilter)
+library(ggplot2)
 
-# For a given motif Z score matrix, return a sparse matrix indicating high (1) vs low (0) median splits of samples based on Z score
+# For a given motif Z score matrix, return a sparse binary matrix 
+# Indicating high (1) vs low (0) median splits of cells based on Z score
 .binarizeZMat <- function(Z){
   (Z > matrixStats::rowMedians(Z))*1
 }
@@ -45,13 +47,13 @@ sigVolcano <- function(motifList,
 }
 
 # NOTE: USE THIS TEST WHEN BINNING CELLS AS HIGH/LOW AND DOING T-TEST OF ASSOCIATION COMPARING COUNTS BETWEEN GROUPS
-ttestPeaksMatPar <- function(Zscores,
-                                scSE,
-                                binarizeMat=FALSE,
-                                normalizeMat=TRUE,
-                                chunkSize=20000,
-                                ncores=1,
-                                byMotifs=TRUE){
+ttestPeaksMatPar <- function(Zscores, # Matrix of motifs x cells (Z scores)
+                             scSE, # Matrix of peak x cells counts (scATAC-seq reads)
+                             binarizeMat=FALSE, # Whether or not to binarize matrix?
+                             normalizeMat=TRUE, # Whether or not to normalize peak counts per cell by mean
+                             chunkSize=20000, # Number of peaks to test at once (in series or in parallel)
+                             ncores=1, # Cores to use if parallelizing
+                             byMotifs=TRUE){ # Return list of motifs, with all peak tests per motif
   stopifnot(all.equal(colnames(Zscores),colnames(scSE)))
   
   if(normalizeMat){
