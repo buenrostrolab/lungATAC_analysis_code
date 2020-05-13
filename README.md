@@ -1,3 +1,3 @@
 # lungATAC analysis code
 
-Coming soon
+Analysis code related to work presented in Lafave et al. (2020).  
