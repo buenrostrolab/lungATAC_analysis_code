@@ -9,6 +9,12 @@ library(scales)
 library(genefilter)
 library(ggplot2)
 
+   
+# Function to get TF short names frrom chromVARmotifs package attribute names
+extractTFnames <-  function(motifIDs){
+    sapply(strsplit(sapply(strsplit(motifIDs,"_LINE.",fixed=FALSE),"[[",2),"_",fixed=FALSE),"[[",2)
+  }
+
 # For a given motif Z score matrix, return a sparse binary matrix 
 # Indicating high (1) vs low (0) median splits of cells based on Z score
 .binarizeZMat <- function(Z){

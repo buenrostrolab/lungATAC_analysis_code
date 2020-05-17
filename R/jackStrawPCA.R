@@ -1,7 +1,7 @@
 ### Author: Vinay Kartha
 ### Contact: <vinay_kartha@g.harvard.edu>
 ### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology
-
+### Disclosure: This code was modified from the jackstrawPCA framework used in Seurat (https://github.com/satijalab/seurat)
 library(irlba)
 library(foreach)
 library(doParallel)
