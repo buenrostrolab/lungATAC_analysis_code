@@ -8,29 +8,28 @@ library(motifmatchr)
 library(BSgenome.Mmusculus.UCSC.mm10)
 library(SummarizedExperiment)
 library(tictoc)
-BiocParallel::register(BiocParallel::MulticoreParam(8, progressbar = TRUE))
+BiocParallel::register(BiocParallel::MulticoreParam(4, progressbar = TRUE))
 
 setwd("<data_analysis_folder>")
 
-cat("Loading filtered SE object ..\n")
+# Load filtered scATAC peak counts object
 SE <- readRDS("./atac.se.rds")
 
-cat("Adding GC bias info ..\n")
+# Get GC content for chromVAR
 SE <- addGCBias(SE,genome=BSgenome.Mmusculus.UCSC.mm10)
 
 # Peaks with zero accessibility across cells
-cat("Any peaks with zero accessibility across cells?:\n")
 table(Matrix::rowSums(assay(SE))==0)
 
-cat("Getting background peaks ..\n")
+# Get background peaks for chromVAR
 bg <- getBackgroundPeaks(object = SE,niterations=250)
 saveRDS(bg,"./chromVAR/bg_peaks.rds")
 
-cat("Getting kmer annotation matrix ..\n")
+# K-mer scoring (used for clustering single cells)
 kmer_ix <- matchKmers(k = 6,subject = SE,genome=BSgenome.Mmusculus.UCSC.mm10)
 saveRDS(kmer_ix,"./chromVAR/kmer_ix.rds")
 
-cat("Getting motif annotation matrix ..\n")
+# Motif scoring (used to annotate single cells)
 motif_ix <- matchMotifs(pwms = mouse_pwms_v2,subject = SE,genome=BSgenome.Mmusculus.UCSC.mm10)
 saveRDS(motif_ix,"./chromVAR/motif_ix.rds")
 
