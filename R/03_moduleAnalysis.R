@@ -2,20 +2,23 @@
 ### Contact: <vinay_kartha@g.harvard.edu>
 ### Affiliation: Buenrostro Lab, Department of Stem Cell and Regerative Biology, Harvard University
 
+library(SummarizedExperiment)
+library(Matrix)
+
 # Source module dependency functions
 source("<path_to_git>/R/moduleDiffPeaks.R")
 # Source jackstraw functions
-source("<path_to_git>/R/jackStrawPCA.R.R")
+source("<path_to_git>/R/jackStrawPCA.R")
 
 setwd("<data_analysis_folder>")
 
-# Load SE object
+# Load SE object of single cell peak counts
 SE <- readRDS("./atac.se.rds")
 
 # Load motif deviations object
 devBagged <- readRDS("./chromVAR/devMotif_bagLeaders.rds")
 
-# Filter cells used in module analysis (remove normal cells)
+# Subset to tumor + met cells only (no normal cells)
 cellsToKeep <- readRDS("./lungMetCells.rds")
 
 SE <- SE[,cellsToKeep]
@@ -34,7 +37,7 @@ JSM <- jackstrawMotifs(mat = Zscaled,
 # Fetch sig variable motifs
 jackSigmotifs <- getSigMotifs(JSpvals = JSM$jackStrawPCEmpPvals,pcs.use = 1:10,pval.cutoff = 0.1)
 
-# Only use jackstraw PC sig motifs, and filtered cells
+# Only use jackstraw sig motifs
 Z <- deviationScores(devBagged)[jackSigmotifs,]
 
 
@@ -105,17 +108,13 @@ for(m in 1:nrow(Zgroups)){
   LFC.mat[,m] <- LFC
 }
 
-sum(is.na(LFC.mat))
-
-# Save to avoid re-run
-saveRDS(LFC.mat,"./diffPeaks/LFC_mat_sigPeaks_jackSigMotifs.rds")
 
 # Cluster sig peaks into modules using KNN + Louvain of log-fold change
 set.seed(123)
 knn <- FNN::get.knn(t(scale(t(as.matrix(LFC.mat)))), algo="kd_tree", k =30)[["nn.index"]]
 igraphObj <- igraph::graph_from_adjacency_matrix(igraph::get.adjacency(igraph::graph.edgelist(data.matrix(reshape2::melt(knn)[,c("Var1", "value")]), directed=FALSE)), mode = "undirected")
 
-# Louvain
+# Louvain custering of graph
 clusters <- igraph::cluster_louvain(igraphObj)
 Kmemberships <- igraph::membership(clusters)
 
@@ -130,7 +129,6 @@ gNumModulePeaks <- ggplot(sigPeaks.d,aes(x=factor(Module),y=numSigGenes)) + geom
   labs(y=paste0("No. of differential peaks\n (FDR < ",FDR,")"),x="Module")+
   scale_y_continuous(expand=c(0,0),limits=c(0,max(sigPeaks.d$numSigGenes) + 500))
 gNumModulePeaks
-ggsave(filename = "./figs/ModulesnumDiffPeaks.pdf",height=4,width=4)
 
 
 # For reference, save the derived K module maps for each reference peak (vector)
@@ -171,12 +169,38 @@ heat <- Heatmap(t(scale(t(p))),name = "log2 FC \naccessibility",
 
 draw(heat)
 
-
-
 # Build binary annotation matrix of peaks x K modules
-# This annotation matrix is what is used as input to chromVAR to score single cells for modules
+# This annotation matrix is what is used as input to chromVAR to score single cells for modules (see below)
 Kannot <- sparseMatrix(i = sigPeaks, # Indices for the significant peaks returned
                        j = Kmemberships, # K cluster assignments for each of the same peaks
                        dims=c(nrow(SE),K)) # Dimensions pertaining to final matrix
 
 colnames(Kannot) <- paste0("K",1:K)
+
+
+########################################## END module definitions ##########################################
+
+runChromVAR <- FALSE
+
+if(runChromVAR){
+# Scoring single cells for modules
+SE <- readRDS("./atac.se.rds") # Same raw peak counts loaded first
+stopifnot(nrow(Kannot)==nrow(SE))
+
+# Get GC bias
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(chromVAR)
+BiocParallel::register(BiocParallel::MulticoreParam(4, progressbar = TRUE))
+
+# GC content for chromVAR
+SE <- addGCBias(object = SE,genome=BSgenome.Mmusculus.UCSC.mm10)
+
+# Background peaks for chromVAR
+bg_peaks <- getBackgroundPeaks(object = SE,niterations=500)
+
+# Get deviation scores for K modules across single cells
+devKModules <- computeDeviations(object = SE,
+                          annotations = Kannot,
+                          background_peaks=bg_peaks)
+saveRDS(devModules,"./chromVAR/KLouvain_sigPeaks_chromVAR_dev.rds")
+}
