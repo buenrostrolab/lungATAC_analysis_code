@@ -19,6 +19,7 @@ SE <- readRDS("./atac.se.rds")
 devBagged <- readRDS("./chromVAR/devMotif_bagLeaders.rds")
 
 # Subset to tumor + met cells only (no normal cells)
+# This was determined through density clustering (UMAP) and experimental labels
 cellsToKeep <- readRDS("./lungMetCells.rds")
 
 SE <- SE[,cellsToKeep]
